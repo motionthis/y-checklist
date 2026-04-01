@@ -303,6 +303,7 @@ var TAGS = ['Work','Personal','Health','Errand'];
 var TAG_ICONS = { Work:'💼', Personal:'🏠', Health:'💪', Errand:'🛒' };
 var currentUser = null;
 var tasks = [];
+var appInitialized = false;
 
 // ── AUTH ──
 async function signInGoogle() {
@@ -344,6 +345,7 @@ async function signOut() {
   await sb.auth.signOut();
   currentUser = null;
   tasks = [];
+  appInitialized = false;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
 }
@@ -409,6 +411,8 @@ function subscribeRealtime() {
 
 // ── APP INIT ──
 async function initApp(user) {
+  if (appInitialized) return;
+  appInitialized = true;
   currentUser = user;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
@@ -419,24 +423,10 @@ async function initApp(user) {
 
 // ── CHECK SESSION ON LOAD ──
 window.addEventListener('load', async function() {
-  // Handle OAuth redirect callback (hash contains access_token)
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    var { data, error } = await sb.auth.getSession();
-    if (data && data.session && data.session.user) {
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      initApp(data.session.user);
-      return;
-    }
-  }
 
-  var { data: { session } } = await sb.auth.getSession();
-  if (session && session.user) {
-    initApp(session.user);
-  }
-
+  // Listen for auth changes first
   sb.auth.onAuthStateChange(function(event, session) {
-    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session && session.user) {
       initApp(session.user);
     }
     if (event === 'SIGNED_OUT') {
@@ -444,6 +434,12 @@ window.addEventListener('load', async function() {
       document.getElementById('loginScreen').style.display = 'flex';
     }
   });
+
+  // Also check immediately
+  var { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) {
+    initApp(session.user);
+  }
 });
 
 // ── UI HELPERS ──
