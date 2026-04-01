@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Daily Checklist</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F4EF;
+    --surface: #FFFFFF;
+    --ink: #1A1A1A;
+    --ink-soft: #6B6560;
+    --accent: #3DBE72;
+    --accent-light: #E6F4EC;
+    --done: #B0A89E;
+    --border: #E8E2DA;
+    --shadow: 0 2px 20px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+
+  .header {
+    max-width: 480px;
+    margin: 0 auto 28px;
+  }
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .date-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--ink-soft);
+    margin-left: 12px;
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .progress-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+  .progress-text {
+    font-size: 12px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
+  .section {
+    max-width: 480px;
+    margin: 0 auto 20px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 0 2px;
+  }
+  .section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: var(--section-color, var(--ink-soft)); }
+  .section-Work     { --section-color: rgba(74,144,217,1); }
+  .section-Personal { --section-color: rgba(224,123,79,1); }
+  .section-Health   { --section-color: rgba(232,180,50,1); }
+  .section-Errand   { --section-color: rgba(160,126,209,1); }
+  .section-count {
+    font-size: 10px;
+    color: var(--done);
+  }
+
+  .card { background: var(--surface); border-radius: 14px; overflow: hidden; border: 2px solid var(--card-stroke, rgba(232,226,218,0.6)); }
+  .card-Work     { --card-stroke: rgba(74,144,217,0.6); }
+  .card-Personal { --card-stroke: rgba(224,123,79,0.6); }
+  .card-Health   { --card-stroke: rgba(232,180,50,0.6); }
+  .card-Errand   { --card-stroke: rgba(160,126,209,0.6); }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    animation: slideIn 0.3s ease both;
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-item:active { background: var(--bg); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+    background: transparent;
+    cursor: pointer;
+  }
+  .task-item.done .checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox svg {
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+  }
+  .task-item.done .checkbox svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .task-content { flex: 1; min-width: 0; }
+  .task-name {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--ink);
+    transition: color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-item.done .task-name {
+    color: var(--done);
+    text-decoration: line-through;
+  }
+
+  .comment-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0;
+    position: relative;
+    transition: opacity 0.15s;
+  }
+  .task-item:hover .comment-btn { opacity: 1; }
+  .comment-btn.has-comment { opacity: 1; }
+
+  /* On touch devices, both icons hidden by default, show only if has-comment */
+  @media (hover: none) {
+    .comment-btn { opacity: 0; }
+    .comment-btn.has-comment { opacity: 1; }
+    .delete-btn { opacity: 0; }
+  }
+
+  .delete-btn {
+    opacity: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--done);
+    padding: 4px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .task-item:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { color: var(--accent); }
+
+  .comment-panel {
+    display: none;
+    padding: 0 16px 14px 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .comment-panel.open { display: block; }
+  .comment-textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: none;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+    display: block;
+    box-sizing: border-box;
+  }
+  .comment-textarea:focus { border-color: var(--accent); }
+  .comment-textarea::placeholder { color: var(--done); }
+  .comment-save-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+  .comment-save-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* Add row — equal padding both sides, nothing cut off */
+  .add-row {
+    max-width: 480px;
+    margin: 0 auto 12px;
+  }
+  .add-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+  }
+  .add-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface);
+    border: none;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    color: var(--ink);
+    outline: none;
+    transition: box-shadow 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .add-input:focus { box-shadow: 0 2px 20px rgba(0,0,0,0.13), 0 0 0 2px rgba(61,190,114,0.6); }
+  .add-input::placeholder { color: var(--done); }
+
+  .tag-select {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: none;
+    border-radius: 10px;
+    padding: 11px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    outline: none;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+  .tag-select:focus { box-shadow: 0 2px 20px rgba(0,0,0,0.13); }
+
+  .add-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+    box-shadow: 0 2px 8px rgba(61,190,114,0.25);
+  }
+  .add-btn:active { transform: scale(0.93); }
+
+  .empty {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--done);
+    font-size: 14px;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .task-item.popping .checkbox { animation: pop 0.25s ease; }
+
+  .all-done {
+    max-width: 480px;
+    margin: 0 auto 20px;
+    background: #E6F4EC;
+    border-radius: 14px;
+    padding: 16px 20px;
+    align-items: center;
+    gap: 12px;
+    display: none;
+  }
+  .all-done.show { display: flex; }
+  .all-done-icon { font-size: 28px; }
+  .all-done-text { font-size: 14px; color: var(--accent); font-weight: 500; }
+  .all-done-text small { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title-row">
+    <div class="title">Today's List</div>
+    <div class="date-label" id="dateLabel"></div>
+  </div>
+  <div class="progress-row">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text" id="progressText">0 / 0 done</div>
+  </div>
+</div>
+
+<div class="add-row">
+  <div class="add-form">
+    <input class="add-input" id="addInput" type="text" placeholder="Add a task…" maxlength="80" />
+    <select class="tag-select" id="tagSelect">
+      <option value="Work">💼 Work</option>
+      <option value="Personal">🏠 Personal</option>
+      <option value="Health">💪 Health</option>
+      <option value="Errand">🛒 Errand</option>
+    </select>
+    <button class="add-btn" onclick="addTask()">+</button>
+  </div>
+</div>
+
+<div class="all-done" id="allDoneBanner">
+  <div class="all-done-icon">🎉</div>
+  <div class="all-done-text">All done!
+    <small>Great work today. Enjoy the rest of your day.</small>
+  </div>
+</div>
+
+<div id="sectionsContainer"></div>
+
+<script>
+var TAGS = ['Work','Personal','Health','Errand'];
+var TAG_ICONS = { Work:'💼', Personal:'🏠', Health:'💪', Errand:'🛒' };
+
+var tasks = [];
+try { tasks = JSON.parse(localStorage.getItem('daily_tasks_v3') || '[]') || []; } catch(e) { tasks = []; }
+
+function save() {
+  try { localStorage.setItem('daily_tasks_v3', JSON.stringify(tasks)); } catch(e) {}
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setDate() {
+  var d = new Date();
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('dateLabel').textContent = days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+function updateProgress() {
+  var total = tasks.length;
+  var done = tasks.filter(function(t){ return t.done; }).length;
+  var pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = done + ' / ' + total + ' done';
+  var banner = document.getElementById('allDoneBanner');
+  if (total > 0 && done === total) {
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function render() {
+  var container = document.getElementById('sectionsContainer');
+  container.innerHTML = '';
+
+  var grouped = {};
+  TAGS.forEach(function(t) { grouped[t] = []; });
+  tasks.forEach(function(t) { if (grouped[t.tag]) grouped[t.tag].push(t); });
+
+  TAGS.forEach(function(tag) {
+    var items = grouped[tag];
+    if (!items.length) return;
+
+    var doneCount = items.filter(function(i){ return i.done; }).length;
+
+    var section = document.createElement('div');
+    section.className = 'section';
+    section.innerHTML =
+      '<div class="section-header">' +
+        '<span class="section-title section-' + tag + '">' + TAG_ICONS[tag] + ' ' + tag + '</span>' +
+        '<span class="section-count" id="count-' + tag + '">' + doneCount + '/' + items.length + '</span>' +
+      '</div>' +
+      '<div class="card card-' + tag + '" id="card-' + tag + '"></div>';
+    container.appendChild(section);
+
+    var card = document.getElementById('card-' + tag);
+
+    items.forEach(function(task, i) {
+      var hasComment = task.comment && task.comment.trim().length > 0;
+
+      var el = document.createElement('div');
+      el.className = 'task-item' + (task.done ? ' done' : '');
+      el.style.animationDelay = (i * 0.04) + 's';
+      el.dataset.id = String(task.id);
+      el.innerHTML =
+        '<div class="checkbox">' +
+          '<svg width="11" height="9" viewBox="0 0 11 9" fill="none">' +
+            '<path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="task-content"><div class="task-name">' + escHtml(task.name) + '</div></div>' +
+        '<button class="comment-btn' + (hasComment ? ' has-comment' : '') + '" title="Note" onclick="toggleComment(event,' + task.id + ')">' + (hasComment ? '✏️' : '💬') + '</button>' +
+        '<button class="delete-btn" onclick="deleteTask(event,' + task.id + ')" title="Remove">×</button>';
+
+      var commentEl = document.createElement('div');
+      commentEl.className = 'comment-panel';
+      commentEl.id = 'comment-panel-' + task.id;
+      commentEl.innerHTML =
+        '<textarea class="comment-textarea" id="comment-text-' + task.id + '" placeholder="Add a note, issue, or update…">' + escHtml(task.comment || '') + '</textarea>' +
+        '<div class="comment-save-row"><button class="comment-save-btn" onclick="saveComment(' + task.id + ')">Save note</button></div>';
+
+      el.addEventListener('click', function(e) {
+        if (!e.target.closest('.checkbox')) return;
+        toggleTask(task.id, el);
+      });
+
+      el.addEventListener('touchend', function(e) {
+        if (e.target.closest('.checkbox')) {
+          e.preventDefault();
+          toggleTask(task.id, el);
+          return;
+        }
+        if (e.target.closest('.delete-btn') || e.target.closest('.comment-btn')) return;
+        // Toggle selected state for showing icons
+        var wasSelected = el.classList.contains('selected');
+        document.querySelectorAll('.task-item.selected').forEach(function(t) {
+          t.classList.remove('selected');
+        });
+        if (!wasSelected) el.classList.add('selected');
+      }, { passive: false });
+
+      card.appendChild(el);
+      card.appendChild(commentEl);
+    });
+  });
+
+  updateProgress();
+}
+
+function autoExpand(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function toggleComment(e, id) {
+  e.stopPropagation();
+  var panel = document.getElementById('comment-panel-' + id);
+  if (!panel) return;
+  var isOpen = panel.classList.toggle('open');
+  if (isOpen) {
+    setTimeout(function() {
+      var ta = document.getElementById('comment-text-' + id);
+      if (ta) {
+        ta.focus();
+        autoExpand(ta);
+        ta.addEventListener('input', function() { autoExpand(ta); });
+      }
+    }, 50);
+  }
+}
+
+function saveComment(id) {
+  var ta = document.getElementById('comment-text-' + id);
+  if (!ta) return;
+  var task = null;
+  for (var i = 0; i < tasks.length; i++) { if (tasks[i].id === id) { task = tasks[i]; break; } }
+  if (!task) return;
+  task.comment = ta.value;
+  save();
+  var btn = document.querySelector('.task-item[data-id="' + id + '"] .comment-btn');
+  if (btn) {
+    var hasNote = task.comment.trim().length > 0;
+    if (hasNote) { btn.classList.add('has-comment'); btn.textContent = '✏️'; }
+    else { btn.classList.remove('has-comment'); btn.textContent = '💬'; }
+  }
+  var panel = document.getElementById('comment-panel-' + id);
+  if (panel) panel.classList.remove('open');
+}
+
+function toggleTask(id, el) {
+  var task = null;
+  for (var i = 0; i < tasks.length; i++) { if (tasks[i].id === id) { task = tasks[i]; break; } }
+  if (!task) return;
+  task.done = !task.done;
+  el.classList.toggle('done', task.done);
+  el.classList.add('popping');
+  setTimeout(function() { el.classList.remove('popping'); }, 300);
+  save();
+  updateProgress();
+  var countEl = document.getElementById('count-' + task.tag);
+  if (countEl) {
+    var tagItems = tasks.filter(function(t){ return t.tag === task.tag; });
+    var tagDone = tagItems.filter(function(t){ return t.done; }).length;
+    countEl.textContent = tagDone + '/' + tagItems.length;
+  }
+}
+
+function deleteTask(e, id) {
+  e.stopPropagation();
+  tasks = tasks.filter(function(t){ return t.id !== id; });
+  save();
+  render();
+}
+
+function addTask() {
+  var input = document.getElementById('addInput');
+  var tag = document.getElementById('tagSelect').value;
+  var name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  tasks.push({ id: Date.now(), name: name, tag: tag, done: false, comment: '' });
+  input.value = '';
+  input.focus();
+  save();
+  render();
+}
+
+var TAG_COLORS = { Work:'#4A90D9', Personal:'#E07B4F', Health:'#E8B432', Errand:'#A07ED1' };
+
+document.getElementById('tagSelect').addEventListener('change', function() {});
+
+document.getElementById('addInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') addTask();
+});
+
+setDate();
+render();
+</script>
+</body>
+</html>
