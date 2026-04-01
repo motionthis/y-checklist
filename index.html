@@ -74,19 +74,8 @@
   }
   .google-btn:hover { border-color: #4A90D9; box-shadow: 0 2px 12px rgba(74,144,217,0.15); }
   .google-btn svg { flex-shrink: 0; }
-  .divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--done);
-    font-size: 12px;
-  }
-  .divider::before, .divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+  .divider { display: flex; align-items: center; gap: 10px; color: var(--done); font-size: 12px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .email-input {
     width: 100%;
     border: 2px solid var(--border);
@@ -115,12 +104,23 @@
     width: 100%;
   }
   .magic-btn:active { opacity: 0.85; }
-  .login-msg {
+  .magic-btn.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+  }
+  .toggle-mode {
+    text-align: center;
     font-size: 13px;
     color: var(--ink-soft);
-    text-align: center;
-    min-height: 20px;
   }
+  .toggle-mode a {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .login-msg { font-size: 13px; color: var(--ink-soft); text-align: center; min-height: 20px; }
   .login-msg.success { color: var(--accent); }
   .login-msg.error { color: #E07B4F; }
 
@@ -240,8 +240,12 @@
       Continue with Google
     </button>
     <div class="divider">or</div>
-    <input class="email-input" id="emailInput" type="email" placeholder="your@email.com" />
-    <button class="magic-btn" onclick="signInEmail()">Send Magic Link</button>
+    <input class="email-input" id="emailInput" type="email" placeholder="Email address" />
+    <input class="email-input" id="passwordInput" type="password" placeholder="Password" />
+    <button class="magic-btn" id="submitBtn" onclick="handleEmailAuth()">Sign In</button>
+    <div class="toggle-mode" id="toggleMode">
+      No account? <a onclick="toggleAuthMode()">Create one</a>
+    </div>
     <div class="login-msg" id="loginMsg"></div>
   </div>
 </div>
@@ -308,16 +312,31 @@ async function signInGoogle() {
   if (error) showMsg('Error: ' + error.message, 'error');
 }
 
-async function signInEmail() {
+var authMode = 'signin'; // 'signin' or 'signup'
+
+function toggleAuthMode() {
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('submitBtn').textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('toggleMode').innerHTML = authMode === 'signin'
+    ? 'No account? <a onclick="toggleAuthMode()">Create one</a>'
+    : 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';
+  showMsg('', '');
+}
+
+async function handleEmailAuth() {
   var email = document.getElementById('emailInput').value.trim();
-  if (!email) { showMsg('Please enter your email', 'error'); return; }
-  showMsg('Sending magic link…', '');
-  var { error } = await sb.auth.signInWithOtp({
-    email: email,
-    options: { emailRedirectTo: window.location.href }
-  });
-  if (error) showMsg('Error: ' + error.message, 'error');
-  else showMsg('✅ Check your email for the login link!', 'success');
+  var password = document.getElementById('passwordInput').value;
+  if (!email || !password) { showMsg('Please enter email and password', 'error'); return; }
+  if (password.length < 6) { showMsg('Password must be at least 6 characters', 'error'); return; }
+  showMsg('Please wait…', '');
+  if (authMode === 'signup') {
+    var { error } = await sb.auth.signUp({ email: email, password: password });
+    if (error) showMsg('Error: ' + error.message, 'error');
+    else showMsg('✅ Account created! Check email to confirm, or sign in now.', 'success');
+  } else {
+    var { error } = await sb.auth.signInWithPassword({ email: email, password: password });
+    if (error) showMsg('Error: ' + error.message, 'error');
+  }
 }
 
 async function signOut() {
@@ -570,7 +589,10 @@ document.getElementById('addInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') addTask();
 });
 document.getElementById('emailInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') signInEmail();
+  if (e.key === 'Enter') document.getElementById('passwordInput').focus();
+});
+document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleEmailAuth();
 });
 </script>
 </body>
