@@ -419,10 +419,22 @@ async function initApp(user) {
 
 // ── CHECK SESSION ON LOAD ──
 window.addEventListener('load', async function() {
+  // Handle OAuth redirect callback (hash contains access_token)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    var { data, error } = await sb.auth.getSession();
+    if (data && data.session && data.session.user) {
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      initApp(data.session.user);
+      return;
+    }
+  }
+
   var { data: { session } } = await sb.auth.getSession();
   if (session && session.user) {
     initApp(session.user);
   }
+
   sb.auth.onAuthStateChange(function(event, session) {
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
       initApp(session.user);
