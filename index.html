@@ -308,7 +308,7 @@ var tasks = [];
 async function signInGoogle() {
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: { redirectTo: 'https://motionthis.github.io/y-checklist' }
   });
   if (error) showMsg('Error: ' + error.message, 'error');
 }
